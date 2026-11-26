@@ -730,7 +730,7 @@ public enum LengthUnit {
   }
 
   /**
-   * Returns a format able to format volumes with their localized unit.
+   * Formats Volumes according to the application's existing length-based number formatting (so m^3 for cm,mm,m and ft^3 otherwise)
    */
   public abstract Format getVolumeFormatWithUnit();
 

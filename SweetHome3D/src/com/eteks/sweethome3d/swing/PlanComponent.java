@@ -2002,12 +2002,45 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
     }
     return strokeWidth;
   }
-  
+
+  /**
+   * Prints one page for each viewable level.
+   */
+  public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
+    // Get all viewable levels in the order they're stored in the home
+    List<Level> viewableLevels = new ArrayList<Level>();
+
+    for (Level level : this.home.getLevels()) {
+      if (level.isViewable()) {
+        viewableLevels.add(level);
+      }
+    }
+
+    // Check whether the requested page exists
+    if (pageIndex < 0 || pageIndex >= viewableLevels.size()) {
+      return NO_SUCH_PAGE;
+    }
+
+    // Save the originally selected level
+    Level oldSelectedLevel = this.home.getSelectedLevel();
+
+    try {
+      // Select the level to print
+      this.home.setSelectedLevel(viewableLevels.get(pageIndex));
+
+      // Print the selected level
+      return printSelectedLevel(g, pageFormat, 0);
+
+    } finally {
+      // Restore the originally selected level
+      this.home.setSelectedLevel(oldSelectedLevel);
+    }
+  }
   /**
    * Prints this component plan at the scale given in the home print attributes or at a scale 
    * that makes it fill <code>pageFormat</code> imageable size if this attribute is <code>null</code>.
    */
-  public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
+  public int printSelectedLevel(Graphics g, PageFormat pageFormat, int pageIndex) {
     List<Selectable> printedItems = getPaintedItems(); 
     Rectangle2D printedItemBounds = getItemsBounds(g, printedItems);
     if (printedItemBounds != null) {
@@ -2066,9 +2099,29 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
         // Print component contents
         paintContent(g2D, printScale, PaintMode.PRINT);
       } catch (InterruptedIOException ex) {
-        // Ignore exception because it may happen only in EXPORT paint mode 
-      }   
+        // Ignore exception because it may happen only in EXPORT paint mode
+      }
+      // Print the selected level name at the top centre of the page in bold
+      Graphics2D titleGraphics = (Graphics2D)g.create();
+
+      Level selectedLevel = this.home.getSelectedLevel();
+      if (selectedLevel != null) {
+        String levelName = selectedLevel.getName();
+
+        Font oldFont = titleGraphics.getFont();
+        titleGraphics.setFont(oldFont.deriveFont(Font.BOLD, 35f));
+        titleGraphics.setColor(Color.BLACK);
+
+        FontMetrics fontMetrics = titleGraphics.getFontMetrics();
+
+        float titleX = (float)(imageableX
+                + (imageableWidth - fontMetrics.stringWidth(levelName)) / 2);
+        float titleY = (float)(imageableY + fontMetrics.getAscent());
+
+        titleGraphics.drawString(levelName, titleX, titleY);
+      }
       g2D.dispose();
+      titleGraphics.dispose();
       return PAGE_EXISTS;
     } else {
       return NO_SUCH_PAGE;
