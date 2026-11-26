@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * A group of furniture of furniture.
+ * A group of furniture.
  * @since 2.3
  * @author Emmanuel Puybaret
  */
@@ -442,6 +442,17 @@ public class HomeFurnitureGroup extends HomePieceOfFurniture {
       return super.getHeight();
     }
   }
+  /**
+   * Returns the volume of this group.
+   */
+  @Override
+  public float getVolume(){
+    if (!this.resizable){
+      return this.getHeight() * this.getWidth()* this.getDepth();
+    } else {
+      return super.getVolume();
+    }
+  }
   
   /**
    * Returns the elevation at which should be placed an object dropped on this group.
@@ -826,6 +837,20 @@ public class HomeFurnitureGroup extends HomePieceOfFurniture {
         piece.addPropertyChangeListener(this.furnitureListener);
       }
       super.setHeight(height);
+    }
+  }
+
+  /**
+   * Sets the <code>volume</code> of this group, then resizes its furniture accordingly.
+   */
+  public void setVolume(float volume) {
+    if (volume != getVolume() && getVolume() > 0) {
+      float volumeFactor = volume / getVolume();
+      float scaleFactor = (float)Math.cbrt(volumeFactor);
+
+      setWidth(getWidth() * scaleFactor);
+      setDepth(getDepth() * scaleFactor);
+      setHeight(getHeight() * scaleFactor);
     }
   }
 

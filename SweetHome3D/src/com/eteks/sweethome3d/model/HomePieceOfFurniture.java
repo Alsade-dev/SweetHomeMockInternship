@@ -51,17 +51,18 @@ public class HomePieceOfFurniture extends HomeObject implements PieceOfFurniture
    * to a piece of furniture will be notified under a property name equal to the string value of one these properties.
    */
   public enum Property {NAME, NAME_VISIBLE, NAME_X_OFFSET, NAME_Y_OFFSET, NAME_STYLE, NAME_ANGLE,
-      DESCRIPTION, PRICE, WIDTH, DEPTH, HEIGHT, COLOR, TEXTURE, MODEL_MATERIALS, SHININESS, VISIBLE, X, Y, ELEVATION, ANGLE, MODEL_MIRRORED, MOVABLE, LEVEL};
+      DESCRIPTION, PRICE, WIDTH, DEPTH, HEIGHT, VOLUME, COLOR, TEXTURE, MODEL_MATERIALS, SHININESS, VISIBLE, X, Y, ELEVATION, ANGLE, MODEL_MIRRORED, MOVABLE, LEVEL};
   
   /** 
    * The properties on which home furniture may be sorted.  
    */
-  public enum SortableProperty {CATALOG_ID, NAME, WIDTH, DEPTH, HEIGHT, MOVABLE, 
+  //Added volume as sortable property
+  public enum SortableProperty {CATALOG_ID, NAME, WIDTH, DEPTH, HEIGHT, VOLUME, MOVABLE,
                                 DOOR_OR_WINDOW, COLOR, TEXTURE, VISIBLE, X, Y, ELEVATION, ANGLE,
                                 PRICE, VALUE_ADDED_TAX, VALUE_ADDED_TAX_PERCENTAGE, PRICE_VALUE_ADDED_TAX_INCLUDED, LEVEL};
   private static final Map<SortableProperty, Comparator<HomePieceOfFurniture>> SORTABLE_PROPERTY_COMPARATORS;
   private static final float [][] IDENTITY = new float [][] {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
-  
+
   static {
     final Collator collator = Collator.getInstance();
     // Init piece property comparators
@@ -107,6 +108,12 @@ public class HomePieceOfFurniture extends HomeObject implements PieceOfFurniture
           return HomePieceOfFurniture.compare(piece1.depth, piece2.depth);
         }
       });
+    ///Added a volume comparator
+    SORTABLE_PROPERTY_COMPARATORS.put(SortableProperty.VOLUME, new Comparator<HomePieceOfFurniture>() {
+        public int compare(HomePieceOfFurniture piece1, HomePieceOfFurniture piece2) {
+          return HomePieceOfFurniture.compare(piece1.getVolume(), piece2.getVolume());
+      }
+    });
     SORTABLE_PROPERTY_COMPARATORS.put(SortableProperty.MOVABLE, new Comparator<HomePieceOfFurniture>() {
         public int compare(HomePieceOfFurniture piece1, HomePieceOfFurniture piece2) {
           return HomePieceOfFurniture.compare(piece1.movable, piece2.movable);
@@ -530,9 +537,11 @@ public class HomePieceOfFurniture extends HomeObject implements PieceOfFurniture
     if (isResizable()) {
       if (depth != this.depth) {
         float oldDepth = this.depth;
+        float oldVolume = this.getVolume();
         this.depth = depth;
         this.shapeCache = null;
         this.propertyChangeSupport.firePropertyChange(Property.DEPTH.name(), oldDepth, depth);
+        this.propertyChangeSupport.firePropertyChange(Property.VOLUME.name(), oldVolume, this.getVolume());
       }
     } else {
       throw new IllegalStateException("Piece isn't resizable");
@@ -555,8 +564,10 @@ public class HomePieceOfFurniture extends HomeObject implements PieceOfFurniture
     if (isResizable()) {
       if (height != this.height) {
         float oldHeight = this.height;
+        float oldVolume = getVolume();
         this.height = height;
         this.propertyChangeSupport.firePropertyChange(Property.HEIGHT.name(), oldHeight, height);
+        this.propertyChangeSupport.firePropertyChange(Property.VOLUME.name(), oldVolume, getVolume());
       }
     } else {
       throw new IllegalStateException("Piece isn't resizable");
@@ -579,661 +590,671 @@ public class HomePieceOfFurniture extends HomeObject implements PieceOfFurniture
     if (isResizable()) {
       if (width != this.width) {
         float oldWidth = this.width;
+        float oldVolume = getVolume();
         this.width = width;
         this.shapeCache = null;
+
         this.propertyChangeSupport.firePropertyChange(Property.WIDTH.name(), oldWidth, width);
+        this.propertyChangeSupport.firePropertyChange(Property.VOLUME.name(), oldVolume, getVolume());
       }
     } else {
       throw new IllegalStateException("Piece isn't resizable");
     }
   }
-
   /**
-   * Returns the elevation of the bottom of this piece of furniture on its level. 
+   * Returns the volume of this piece of furniture.
    */
-  public float getElevation() {
-    return this.elevation;
+  public float getVolume() {
+    return this.width * this.depth * this.height;
   }
 
-  /**
-   * Returns the elevation at which should be placed an object dropped on this piece.
-   * @return a percentage of the height of this piece. A negative value means that the piece 
-   *         should be ignored when an object is dropped on it.
-   * @since 4.4 
-   */
-  public float getDropOnTopElevation() {
-    return this.dropOnTopElevation;
-  }
 
-  /**
-   * Returns the elevation of the bottom of this piece of furniture 
-   * from the ground according to the elevation of its level.
-   * @since 3.4 
-   */
-  public float getGroundElevation() {
-    if (this.level != null) {
-      return this.elevation + this.level.getElevation();
-    } else {
+    /**
+     * Returns the elevation of the bottom of this piece of furniture on its level.
+     */
+    public float getElevation () {
       return this.elevation;
     }
-  }
 
-  /**
-   * Sets the elevation of this piece of furniture on its level. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   */
-  public void setElevation(float elevation) {
-    if (elevation != this.elevation) {
-      float oldElevation = this.elevation;
-      this.elevation = elevation;
-      this.propertyChangeSupport.firePropertyChange(Property.ELEVATION.name(), oldElevation, elevation);
+    /**
+     * Returns the elevation at which should be placed an object dropped on this piece.
+     * @return a percentage of the height of this piece. A negative value means that the piece
+     *         should be ignored when an object is dropped on it.
+     * @since 4.4
+     */
+    public float getDropOnTopElevation () {
+      return this.dropOnTopElevation;
     }
-  }
 
-  /**
-   * Returns <code>true</code> if this piece of furniture is movable.
-   */
-  public boolean isMovable() {
-    return this.movable;
-  }
-
-  /**
-   * Sets whether this piece is movable or not.
-   * @since 3.0
-   */
-  public void setMovable(boolean movable) {
-    if (movable != this.movable) {
-      this.movable = movable;
-      this.propertyChangeSupport.firePropertyChange(Property.MOVABLE.name(), !movable, movable);
-    }
-  }
-  
-  /**
-   * Returns <code>true</code> if this piece of furniture is a door or a window.
-   * As this method existed before {@linkplain HomeDoorOrWindow HomeDoorOrWindow} class,
-   * you shouldn't rely on the value returned by this method to guess if a piece
-   * is an instance of <code>DoorOrWindow</code> class.
-   */
-  public boolean isDoorOrWindow() {
-    return this.doorOrWindow;
-  }
-
-  /**
-   * Returns the icon of this piece of furniture.
-   */
-  public Content getIcon() {
-    return this.icon;
-  }
-
-  /**
-   * Returns the icon of this piece of furniture displayed in plan or <code>null</code>.
-   * @since 2.2
-   */
-  public Content getPlanIcon() {
-    return this.planIcon;
-  }
-
-  /**
-   * Returns the 3D model of this piece of furniture.
-   */
-  public Content getModel() {
-    return this.model;
-  }
-
-  /**
-   * Sets the materials of the 3D model of this piece of furniture. 
-   * Once this piece is updated, listeners added to this piece will receive a change notification.
-   * @param modelMaterials the materials of the 3D model or <code>null</code> if they shouldn't be changed
-   * @throws IllegalStateException if this piece of furniture isn't texturable
-   */
-  public void setModelMaterials(HomeMaterial [] modelMaterials) {
-    if (isTexturable()) {
-      if (!Arrays.equals(modelMaterials, this.modelMaterials)) {
-        HomeMaterial [] oldModelMaterials = this.modelMaterials;
-        this.modelMaterials = modelMaterials != null 
-            ? modelMaterials.clone()
-            : null;
-        this.propertyChangeSupport.firePropertyChange(Property.MODEL_MATERIALS.name(), oldModelMaterials, modelMaterials);
+    /**
+     * Returns the elevation of the bottom of this piece of furniture
+     * from the ground according to the elevation of its level.
+     * @since 3.4
+     */
+    public float getGroundElevation () {
+      if (this.level != null) {
+        return this.elevation + this.level.getElevation();
+      } else {
+        return this.elevation;
       }
-    } else {
-      throw new IllegalStateException("Piece isn't texturable");
     }
-  }
-  
-  /**
-   * Returns the materials applied to the 3D model of this piece of furniture.
-   * @return the materials of the 3D model or <code>null</code> 
-   * if the individual materials of the 3D model are not modified.
-   * @since 4.0
-   */
-  public HomeMaterial [] getModelMaterials() {
-    if (this.modelMaterials != null) {
-      return this.modelMaterials.clone();
-    } else {
-      return null;
-    }
-  }
-  
-  /**
-   * Returns the color of this piece of furniture.
-   * @return the color of the piece as RGB code or <code>null</code> if piece color is unchanged.
-   */
-  public Integer getColor() {
-    return this.color;
-  }
-  
-  /**
-   * Sets the color of this piece of furniture. 
-   * Once this piece is updated, listeners added to this piece will receive a change notification.
-   * @param color the color of this piece of furniture or <code>null</code> if piece color is the default one
-   * @throws IllegalStateException if this piece of furniture isn't texturable
-   */
-  public void setColor(Integer color) {
-    if (isTexturable()) {
-      if (color != this.color
-          && (color == null || !color.equals(this.color))) {
-        Integer oldColor = this.color;
-        this.color = color;
-        this.propertyChangeSupport.firePropertyChange(Property.COLOR.name(), oldColor, color);
+
+    /**
+     * Sets the elevation of this piece of furniture on its level. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     */
+    public void setElevation ( float elevation){
+      if (elevation != this.elevation) {
+        float oldElevation = this.elevation;
+        this.elevation = elevation;
+        this.propertyChangeSupport.firePropertyChange(Property.ELEVATION.name(), oldElevation, elevation);
       }
-    } else {
-      throw new IllegalStateException("Piece isn't texturable");
     }
-  }
 
-  /**
-   * Returns the texture of this piece of furniture.
-   * @return the texture of the piece or <code>null</code> if piece texture is unchanged.
-   * @since 2.3
-   */
-  public HomeTexture getTexture() {
-    return this.texture;
-  }
-  
-  /**
-   * Sets the texture of this piece of furniture. 
-   * Once this piece is updated, listeners added to this piece will receive a change notification.
-   * @param texture the texture of this piece of furniture or <code>null</code> if piece texture is the default one
-   * @throws IllegalStateException if this piece of furniture isn't texturable
-   * @since 2.3
-   */
-  public void setTexture(HomeTexture texture) {
-    if (isTexturable()) {
-      if (texture != this.texture
-          && (texture == null || !texture.equals(this.texture))) {
-        HomeTexture oldTexture = this.texture;
-        this.texture = texture;
-        this.propertyChangeSupport.firePropertyChange(Property.TEXTURE.name(), oldTexture, texture);
+    /**
+     * Returns <code>true</code> if this piece of furniture is movable.
+     */
+    public boolean isMovable () {
+      return this.movable;
+    }
+
+    /**
+     * Sets whether this piece is movable or not.
+     * @since 3.0
+     */
+    public void setMovable ( boolean movable){
+      if (movable != this.movable) {
+        this.movable = movable;
+        this.propertyChangeSupport.firePropertyChange(Property.MOVABLE.name(), !movable, movable);
       }
-    } else {
-      throw new IllegalStateException("Piece isn't texturable");
     }
-  }
 
-  /**
-   * Returns the shininess of this piece of furniture.
-   * @return a value between 0 (matt) and 1 (very shiny) or <code>null</code> if piece shininess is unchanged.
-   * @since 3.0
-   */
-  public Float getShininess() {
-    return this.shininess;
-  }
-  
-  /**
-   * Sets the shininess of this piece of furniture or <code>null</code> if piece shininess is unchanged. 
-   * Once this piece is updated, listeners added to this piece will receive a change notification.
-   * @throws IllegalStateException if this piece of furniture isn't texturable
-   * @since 3.0
-   */
-  public void setShininess(Float shininess) {
-    if (isTexturable()) {
-      if (shininess != this.shininess
-          && (shininess == null || !shininess.equals(this.shininess))) {
-        Float oldShininess = this.shininess;
-        this.shininess = shininess;
-        this.propertyChangeSupport.firePropertyChange(Property.SHININESS.name(), oldShininess, shininess);
+    /**
+     * Returns <code>true</code> if this piece of furniture is a door or a window.
+     * As this method existed before {@linkplain HomeDoorOrWindow HomeDoorOrWindow} class,
+     * you shouldn't rely on the value returned by this method to guess if a piece
+     * is an instance of <code>DoorOrWindow</code> class.
+     */
+    public boolean isDoorOrWindow () {
+      return this.doorOrWindow;
+    }
+
+    /**
+     * Returns the icon of this piece of furniture.
+     */
+    public Content getIcon () {
+      return this.icon;
+    }
+
+    /**
+     * Returns the icon of this piece of furniture displayed in plan or <code>null</code>.
+     * @since 2.2
+     */
+    public Content getPlanIcon () {
+      return this.planIcon;
+    }
+
+    /**
+     * Returns the 3D model of this piece of furniture.
+     */
+    public Content getModel () {
+      return this.model;
+    }
+
+    /**
+     * Sets the materials of the 3D model of this piece of furniture.
+     * Once this piece is updated, listeners added to this piece will receive a change notification.
+     * @param modelMaterials the materials of the 3D model or <code>null</code> if they shouldn't be changed
+     * @throws IllegalStateException if this piece of furniture isn't texturable
+     */
+    public void setModelMaterials (HomeMaterial[]modelMaterials){
+      if (isTexturable()) {
+        if (!Arrays.equals(modelMaterials, this.modelMaterials)) {
+          HomeMaterial[] oldModelMaterials = this.modelMaterials;
+          this.modelMaterials = modelMaterials != null
+                  ? modelMaterials.clone()
+                  : null;
+          this.propertyChangeSupport.firePropertyChange(Property.MODEL_MATERIALS.name(), oldModelMaterials, modelMaterials);
+        }
+      } else {
+        throw new IllegalStateException("Piece isn't texturable");
       }
-    } else {
-      throw new IllegalStateException("Piece isn't texturable");
     }
-  }
 
-  /**
-   * Returns <code>true</code> if this piece is resizable.
-   */
-  public boolean isResizable() {
-    return this.resizable;    
-  }
-  
-  /**
-   * Returns <code>true</code> if this piece is deformable.
-   * @since 3.0
-   */
-  public boolean isDeformable() {
-    return this.deformable;    
-  }
-
-  /**
-   * Returns <code>false</code> if this piece should always keep the same color or texture.
-   * @since 3.0
-   */
-  public boolean isTexturable() {
-    return this.texturable;
-  }
-
-  /**
-   * Returns the price of this piece of furniture or <code>null</code>. 
-   */
-  public BigDecimal getPrice() {
-    return this.price;
-  }
-  
-  /**
-   * Sets the price of this piece of furniture. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   * @since 4.0
-   */
-  public void setPrice(BigDecimal price) {
-    if (price != this.price
-        && (price == null || !price.equals(this.price))) {
-      BigDecimal oldPrice = this.price;
-      this.price = price;
-      this.propertyChangeSupport.firePropertyChange(Property.PRICE.name(), oldPrice, price);
+    /**
+     * Returns the materials applied to the 3D model of this piece of furniture.
+     * @return the materials of the 3D model or <code>null</code>
+     * if the individual materials of the 3D model are not modified.
+     * @since 4.0
+     */
+    public HomeMaterial[] getModelMaterials () {
+      if (this.modelMaterials != null) {
+        return this.modelMaterials.clone();
+      } else {
+        return null;
+      }
     }
-  }
-   
-  /**
-   * Returns the Value Added Tax percentage applied to the price of this piece of furniture. 
-   */
-  public BigDecimal getValueAddedTaxPercentage() {
-    return this.valueAddedTaxPercentage;
-  }
 
-  /**
-   * Returns the Value Added Tax applied to the price of this piece of furniture. 
-   */
-  public BigDecimal getValueAddedTax() {
-    if (this.price != null && this.valueAddedTaxPercentage != null) {
-      return this.price.multiply(this.valueAddedTaxPercentage).
-          setScale(this.price.scale(), RoundingMode.HALF_UP);
-    } else {
-      return null;
+    /**
+     * Returns the color of this piece of furniture.
+     * @return the color of the piece as RGB code or <code>null</code> if piece color is unchanged.
+     */
+    public Integer getColor () {
+      return this.color;
     }
-  }
 
-  /**
-   * Returns the price of this piece of furniture, Value Added Tax included. 
-   */
-  public BigDecimal getPriceValueAddedTaxIncluded() {
-    if (this.price != null && this.valueAddedTaxPercentage != null) {
-      return this.price.add(getValueAddedTax());
-    } else {
+    /**
+     * Sets the color of this piece of furniture.
+     * Once this piece is updated, listeners added to this piece will receive a change notification.
+     * @param color the color of this piece of furniture or <code>null</code> if piece color is the default one
+     * @throws IllegalStateException if this piece of furniture isn't texturable
+     */
+    public void setColor (Integer color){
+      if (isTexturable()) {
+        if (color != this.color
+                && (color == null || !color.equals(this.color))) {
+          Integer oldColor = this.color;
+          this.color = color;
+          this.propertyChangeSupport.firePropertyChange(Property.COLOR.name(), oldColor, color);
+        }
+      } else {
+        throw new IllegalStateException("Piece isn't texturable");
+      }
+    }
+
+    /**
+     * Returns the texture of this piece of furniture.
+     * @return the texture of the piece or <code>null</code> if piece texture is unchanged.
+     * @since 2.3
+     */
+    public HomeTexture getTexture () {
+      return this.texture;
+    }
+
+    /**
+     * Sets the texture of this piece of furniture.
+     * Once this piece is updated, listeners added to this piece will receive a change notification.
+     * @param texture the texture of this piece of furniture or <code>null</code> if piece texture is the default one
+     * @throws IllegalStateException if this piece of furniture isn't texturable
+     * @since 2.3
+     */
+    public void setTexture (HomeTexture texture){
+      if (isTexturable()) {
+        if (texture != this.texture
+                && (texture == null || !texture.equals(this.texture))) {
+          HomeTexture oldTexture = this.texture;
+          this.texture = texture;
+          this.propertyChangeSupport.firePropertyChange(Property.TEXTURE.name(), oldTexture, texture);
+        }
+      } else {
+        throw new IllegalStateException("Piece isn't texturable");
+      }
+    }
+
+    /**
+     * Returns the shininess of this piece of furniture.
+     * @return a value between 0 (matt) and 1 (very shiny) or <code>null</code> if piece shininess is unchanged.
+     * @since 3.0
+     */
+    public Float getShininess () {
+      return this.shininess;
+    }
+
+    /**
+     * Sets the shininess of this piece of furniture or <code>null</code> if piece shininess is unchanged.
+     * Once this piece is updated, listeners added to this piece will receive a change notification.
+     * @throws IllegalStateException if this piece of furniture isn't texturable
+     * @since 3.0
+     */
+    public void setShininess (Float shininess){
+      if (isTexturable()) {
+        if (shininess != this.shininess
+                && (shininess == null || !shininess.equals(this.shininess))) {
+          Float oldShininess = this.shininess;
+          this.shininess = shininess;
+          this.propertyChangeSupport.firePropertyChange(Property.SHININESS.name(), oldShininess, shininess);
+        }
+      } else {
+        throw new IllegalStateException("Piece isn't texturable");
+      }
+    }
+
+    /**
+     * Returns <code>true</code> if this piece is resizable.
+     */
+    public boolean isResizable () {
+      return this.resizable;
+    }
+
+    /**
+     * Returns <code>true</code> if this piece is deformable.
+     * @since 3.0
+     */
+    public boolean isDeformable () {
+      return this.deformable;
+    }
+
+    /**
+     * Returns <code>false</code> if this piece should always keep the same color or texture.
+     * @since 3.0
+     */
+    public boolean isTexturable () {
+      return this.texturable;
+    }
+
+    /**
+     * Returns the price of this piece of furniture or <code>null</code>.
+     */
+    public BigDecimal getPrice () {
       return this.price;
     }
-  }
 
-  /**
-   * Returns the price currency, noted with ISO 4217 code, or <code>null</code> 
-   * if it has no price or default currency should be used.
-   * @since 3.4
-   */
-  public String getCurrency() {
-    return this.currency;
-  }
-
-  /**
-   * Returns <code>true</code> if this piece of furniture is visible.
-   */
-  public boolean isVisible() {
-    return this.visible;
-  }
-  
-  /**
-   * Sets whether this piece of furniture is visible or not. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   */
-  public void setVisible(boolean visible) {
-    if (visible != this.visible) {
-      this.visible = visible;
-      this.propertyChangeSupport.firePropertyChange(Property.VISIBLE.name(), !visible, visible);
-    }
-  }
-
-  /**
-   * Returns the abscissa of the center of this piece of furniture.
-   */
-  public float getX() {
-    return this.x;
-  }
-
-  /**
-   * Sets the abscissa of the center of this piece. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   */
-  public void setX(float x) {
-    if (x != this.x) {
-      float oldX = this.x;
-      this.x = x;
-      this.shapeCache = null;
-      this.propertyChangeSupport.firePropertyChange(Property.X.name(), oldX, x);
-    }
-  }
-  
-  /**
-   * Returns the ordinate of the center of this piece of furniture.
-   */
-  public float getY() {
-    return this.y;
-  }
-
-  /**
-   * Sets the ordinate of the center of this piece. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   */
-  public void setY(float y) {
-    if (y != this.y) {
-      float oldY = this.y;
-      this.y = y;
-      this.shapeCache = null;
-      this.propertyChangeSupport.firePropertyChange(Property.Y.name(), oldY, y);
-    }
-  }
-
-  /**
-   * Returns the angle in radians of this piece of furniture around vertical axis. 
-   */
-  public float getAngle() {
-    return this.angle;
-  }
-
-  /**
-   * Sets the angle of this piece around vertical axis. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   */
-  public void setAngle(float angle) {
-    // Ensure angle is always positive and between 0 and 2 PI
-    angle = (float)((angle % TWICE_PI + TWICE_PI) % TWICE_PI);
-    if (angle != this.angle) {
-      float oldAngle = this.angle;
-      this.angle = angle;
-      this.shapeCache = null;
-      this.propertyChangeSupport.firePropertyChange(Property.ANGLE.name(), oldAngle, angle);
-    }
-  }
-
-  /**
-   * Returns <code>true</code> if the model of this piece should be mirrored.
-   */
-  public boolean isModelMirrored() {
-    return this.modelMirrored;
-  }
-
-  /**
-   * Sets whether the model of this piece of furniture is mirrored or not. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   * @throws IllegalStateException if this piece of furniture isn't resizable
-   */
-  public void setModelMirrored(boolean modelMirrored) {
-    if (isResizable()) {
-      if (modelMirrored != this.modelMirrored) {
-        this.modelMirrored = modelMirrored;
-        this.propertyChangeSupport.firePropertyChange(Property.MODEL_MIRRORED.name(), 
-            !modelMirrored, modelMirrored);
+    /**
+     * Sets the price of this piece of furniture. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     * @since 4.0
+     */
+    public void setPrice (BigDecimal price){
+      if (price != this.price
+              && (price == null || !price.equals(this.price))) {
+        BigDecimal oldPrice = this.price;
+        this.price = price;
+        this.propertyChangeSupport.firePropertyChange(Property.PRICE.name(), oldPrice, price);
       }
-    } else {
-      throw new IllegalStateException("Piece isn't resizable");
     }
-  }
 
-  /**
-   * Returns the rotation 3 by 3 matrix of this piece of furniture that ensures 
-   * its model is correctly oriented.
-   */
-  public float [][] getModelRotation() {
-    // Return a deep copy to avoid any misuse of piece data
-    return new float [][] {{this.modelRotation[0][0], this.modelRotation[0][1], this.modelRotation[0][2]},
-                           {this.modelRotation[1][0], this.modelRotation[1][1], this.modelRotation[1][2]},
-                           {this.modelRotation[2][0], this.modelRotation[2][1], this.modelRotation[2][2]}};
-  }
-
-  /**
-   * Returns the shape used to cut out upper levels when they intersect with the piece   
-   * like a staircase.
-   * @since 3.4
-   */
-  public String getStaircaseCutOutShape() {
-    return this.staircaseCutOutShape;
-  }
-
-  /**
-   * Returns the creator of this piece.
-   * @since 4.2
-   */
-  public String getCreator() {
-    return this.creator;
-  }
-
-  /**
-   * Returns <code>true</code> if the back face of the piece of furniture
-   * model should be displayed.
-   */
-  public boolean isBackFaceShown() {
-    return this.backFaceShown;
-  }
-
-  /**
-   * Returns the level which this piece belongs to. 
-   * @since 3.4
-   */
-  public Level getLevel() {
-    return this.level;
-  }
-
-  /**
-   * Sets the level of this piece of furniture. Once this piece is updated, 
-   * listeners added to this piece will receive a change notification.
-   * @since 3.4
-   */
-  public void setLevel(Level level) {
-    if (level != this.level) {
-      Level oldLevel = this.level;
-      this.level = level;
-      this.propertyChangeSupport.firePropertyChange(Property.LEVEL.name(), oldLevel, level);
+    /**
+     * Returns the Value Added Tax percentage applied to the price of this piece of furniture.
+     */
+    public BigDecimal getValueAddedTaxPercentage () {
+      return this.valueAddedTaxPercentage;
     }
-  }
-  
-  /**
-   * Returns <code>true</code> if this piece is at the given <code>level</code> 
-   * or at a level with the same elevation and a smaller elevation index
-   * or if the elevation of its highest point is higher than <code>level</code> elevation.
-   * @since 3.4
-   */
-  public boolean isAtLevel(Level level) {
-    if (this.level == level) {
-      return true;
-    } else if (this.level != null && level != null) {
-      float pieceLevelElevation = this.level.getElevation();
-      float levelElevation = level.getElevation();
-      return pieceLevelElevation == levelElevation
-             && this.level.getElevationIndex() < level.getElevationIndex()
-          || pieceLevelElevation < levelElevation
-             && isTopAtLevel(level);
-    } else {
+
+    /**
+     * Returns the Value Added Tax applied to the price of this piece of furniture.
+     */
+    public BigDecimal getValueAddedTax () {
+      if (this.price != null && this.valueAddedTaxPercentage != null) {
+        return this.price.multiply(this.valueAddedTaxPercentage).
+                setScale(this.price.scale(), RoundingMode.HALF_UP);
+      } else {
+        return null;
+      }
+    }
+
+    /**
+     * Returns the price of this piece of furniture, Value Added Tax included.
+     */
+    public BigDecimal getPriceValueAddedTaxIncluded () {
+      if (this.price != null && this.valueAddedTaxPercentage != null) {
+        return this.price.add(getValueAddedTax());
+      } else {
+        return this.price;
+      }
+    }
+
+    /**
+     * Returns the price currency, noted with ISO 4217 code, or <code>null</code>
+     * if it has no price or default currency should be used.
+     * @since 3.4
+     */
+    public String getCurrency () {
+      return this.currency;
+    }
+
+    /**
+     * Returns <code>true</code> if this piece of furniture is visible.
+     */
+    public boolean isVisible () {
+      return this.visible;
+    }
+
+    /**
+     * Sets whether this piece of furniture is visible or not. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     */
+    public void setVisible ( boolean visible){
+      if (visible != this.visible) {
+        this.visible = visible;
+        this.propertyChangeSupport.firePropertyChange(Property.VISIBLE.name(), !visible, visible);
+      }
+    }
+
+    /**
+     * Returns the abscissa of the center of this piece of furniture.
+     */
+    public float getX () {
+      return this.x;
+    }
+
+    /**
+     * Sets the abscissa of the center of this piece. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     */
+    public void setX ( float x){
+      if (x != this.x) {
+        float oldX = this.x;
+        this.x = x;
+        this.shapeCache = null;
+        this.propertyChangeSupport.firePropertyChange(Property.X.name(), oldX, x);
+      }
+    }
+
+    /**
+     * Returns the ordinate of the center of this piece of furniture.
+     */
+    public float getY () {
+      return this.y;
+    }
+
+    /**
+     * Sets the ordinate of the center of this piece. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     */
+    public void setY ( float y){
+      if (y != this.y) {
+        float oldY = this.y;
+        this.y = y;
+        this.shapeCache = null;
+        this.propertyChangeSupport.firePropertyChange(Property.Y.name(), oldY, y);
+      }
+    }
+
+    /**
+     * Returns the angle in radians of this piece of furniture around vertical axis.
+     */
+    public float getAngle () {
+      return this.angle;
+    }
+
+    /**
+     * Sets the angle of this piece around vertical axis. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     */
+    public void setAngle ( float angle){
+      // Ensure angle is always positive and between 0 and 2 PI
+      angle = (float) ((angle % TWICE_PI + TWICE_PI) % TWICE_PI);
+      if (angle != this.angle) {
+        float oldAngle = this.angle;
+        this.angle = angle;
+        this.shapeCache = null;
+        this.propertyChangeSupport.firePropertyChange(Property.ANGLE.name(), oldAngle, angle);
+      }
+    }
+
+    /**
+     * Returns <code>true</code> if the model of this piece should be mirrored.
+     */
+    public boolean isModelMirrored () {
+      return this.modelMirrored;
+    }
+
+    /**
+     * Sets whether the model of this piece of furniture is mirrored or not. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     * @throws IllegalStateException if this piece of furniture isn't resizable
+     */
+    public void setModelMirrored ( boolean modelMirrored){
+      if (isResizable()) {
+        if (modelMirrored != this.modelMirrored) {
+          this.modelMirrored = modelMirrored;
+          this.propertyChangeSupport.firePropertyChange(Property.MODEL_MIRRORED.name(),
+                  !modelMirrored, modelMirrored);
+        }
+      } else {
+        throw new IllegalStateException("Piece isn't resizable");
+      }
+    }
+
+    /**
+     * Returns the rotation 3 by 3 matrix of this piece of furniture that ensures
+     * its model is correctly oriented.
+     */
+    public float[][] getModelRotation () {
+      // Return a deep copy to avoid any misuse of piece data
+      return new float[][]{{this.modelRotation[0][0], this.modelRotation[0][1], this.modelRotation[0][2]},
+              {this.modelRotation[1][0], this.modelRotation[1][1], this.modelRotation[1][2]},
+              {this.modelRotation[2][0], this.modelRotation[2][1], this.modelRotation[2][2]}};
+    }
+
+    /**
+     * Returns the shape used to cut out upper levels when they intersect with the piece
+     * like a staircase.
+     * @since 3.4
+     */
+    public String getStaircaseCutOutShape () {
+      return this.staircaseCutOutShape;
+    }
+
+    /**
+     * Returns the creator of this piece.
+     * @since 4.2
+     */
+    public String getCreator () {
+      return this.creator;
+    }
+
+    /**
+     * Returns <code>true</code> if the back face of the piece of furniture
+     * model should be displayed.
+     */
+    public boolean isBackFaceShown () {
+      return this.backFaceShown;
+    }
+
+    /**
+     * Returns the level which this piece belongs to.
+     * @since 3.4
+     */
+    public Level getLevel () {
+      return this.level;
+    }
+
+    /**
+     * Sets the level of this piece of furniture. Once this piece is updated,
+     * listeners added to this piece will receive a change notification.
+     * @since 3.4
+     */
+    public void setLevel (Level level){
+      if (level != this.level) {
+        Level oldLevel = this.level;
+        this.level = level;
+        this.propertyChangeSupport.firePropertyChange(Property.LEVEL.name(), oldLevel, level);
+      }
+    }
+
+    /**
+     * Returns <code>true</code> if this piece is at the given <code>level</code>
+     * or at a level with the same elevation and a smaller elevation index
+     * or if the elevation of its highest point is higher than <code>level</code> elevation.
+     * @since 3.4
+     */
+    public boolean isAtLevel (Level level){
+      if (this.level == level) {
+        return true;
+      } else if (this.level != null && level != null) {
+        float pieceLevelElevation = this.level.getElevation();
+        float levelElevation = level.getElevation();
+        return pieceLevelElevation == levelElevation
+                && this.level.getElevationIndex() < level.getElevationIndex()
+                || pieceLevelElevation < levelElevation
+                && isTopAtLevel(level);
+      } else {
+        return false;
+      }
+    }
+
+    /**
+     * Returns <code>true</code> if the top of this piece is visible at the given level.
+     */
+    private boolean isTopAtLevel (Level level){
+      float topElevation = this.level.getElevation() + this.elevation + this.height;
+      if (this.staircaseCutOutShape != null) {
+        // Consider the top of stair cases is at the given level if their elevation is higher or equal
+        return topElevation >= level.getElevation();
+      } else {
+        return topElevation > level.getElevation();
+      }
+    }
+
+    /**
+     * Returns the points of each corner of a piece.
+     * @return an array of the 4 (x,y) coordinates of the piece corners.
+     */
+    public float[][] getPoints () {
+      float[][] piecePoints = new float[4][2];
+      PathIterator it = getShape().getPathIterator(null);
+      for (int i = 0; i < piecePoints.length; i++) {
+        it.currentSegment(piecePoints[i]);
+        it.next();
+      }
+      return piecePoints;
+    }
+
+    /**
+     * Returns <code>true</code> if this piece intersects
+     * with the horizontal rectangle which opposite corners are at points
+     * (<code>x0</code>, <code>y0</code>) and (<code>x1</code>, <code>y1</code>).
+     */
+    public boolean intersectsRectangle ( float x0, float y0,
+    float x1, float y1){
+      Rectangle2D rectangle = new Rectangle2D.Float(x0, y0, 0, 0);
+      rectangle.add(x1, y1);
+      return getShape().intersects(rectangle);
+    }
+
+    /**
+     * Returns <code>true</code> if this piece contains
+     * the point at (<code>x</code>, <code>y</code>)
+     * with a given <code>margin</code>.
+     */
+    public boolean containsPoint ( float x, float y, float margin){
+      if (margin == 0) {
+        return getShape().contains(x, y);
+      } else {
+        return getShape().intersects(x - margin, y - margin, 2 * margin, 2 * margin);
+      }
+    }
+
+    /**
+     * Returns <code>true</code> if one of the corner of this piece is
+     * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>.
+     */
+    public boolean isPointAt ( float x, float y, float margin){
+      for (float[] point : getPoints()) {
+        if (Math.abs(x - point[0]) <= margin && Math.abs(y - point[1]) <= margin) {
+          return true;
+        }
+      }
       return false;
     }
-  }
-  
-  /**
-   * Returns <code>true</code> if the top of this piece is visible at the given level.
-   */
-  private boolean isTopAtLevel(Level level) {
-    float topElevation = this.level.getElevation() + this.elevation + this.height;
-    if (this.staircaseCutOutShape != null) {
-      // Consider the top of stair cases is at the given level if their elevation is higher or equal
-      return topElevation >= level.getElevation();
-    } else {
-      return topElevation > level.getElevation();
+
+    /**
+     * Returns <code>true</code> if the top left point of this piece is
+     * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>,
+     * and if that point is closer to top left point than to top right and bottom left points.
+     */
+    public boolean isTopLeftPointAt ( float x, float y, float margin){
+      float[][] points = getPoints();
+      double distanceSquareToTopLeftPoint = Point2D.distanceSq(x, y, points[0][0], points[0][1]);
+      return distanceSquareToTopLeftPoint <= margin * margin
+              && distanceSquareToTopLeftPoint < Point2D.distanceSq(x, y, points[1][0], points[1][1])
+              && distanceSquareToTopLeftPoint < Point2D.distanceSq(x, y, points[3][0], points[3][1]);
     }
-  }
-  
-  /**
-   * Returns the points of each corner of a piece.
-   * @return an array of the 4 (x,y) coordinates of the piece corners.
-   */
-  public float [][] getPoints() {
-    float [][] piecePoints = new float[4][2];
-    PathIterator it = getShape().getPathIterator(null);
-    for (int i = 0; i < piecePoints.length; i++) {
-      it.currentSegment(piecePoints [i]);
-      it.next();
+
+    /**
+     * Returns <code>true</code> if the top right point of this piece is
+     * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>,
+     * and if that point is closer to top right point than to top left and bottom right points.
+     */
+    public boolean isTopRightPointAt ( float x, float y, float margin){
+      float[][] points = getPoints();
+      double distanceSquareToTopRightPoint = Point2D.distanceSq(x, y, points[1][0], points[1][1]);
+      return distanceSquareToTopRightPoint <= margin * margin
+              && distanceSquareToTopRightPoint < Point2D.distanceSq(x, y, points[0][0], points[0][1])
+              && distanceSquareToTopRightPoint < Point2D.distanceSq(x, y, points[2][0], points[2][1]);
     }
-    return piecePoints;
-  }
-  
-  /**
-   * Returns <code>true</code> if this piece intersects
-   * with the horizontal rectangle which opposite corners are at points
-   * (<code>x0</code>, <code>y0</code>) and (<code>x1</code>, <code>y1</code>).
-   */
-  public boolean intersectsRectangle(float x0, float y0, 
-                                     float x1, float y1) {
-    Rectangle2D rectangle = new Rectangle2D.Float(x0, y0, 0, 0);
-    rectangle.add(x1, y1);
-    return getShape().intersects(rectangle);
-  }
-  
-  /**
-   * Returns <code>true</code> if this piece contains 
-   * the point at (<code>x</code>, <code>y</code>)
-   * with a given <code>margin</code>.
-   */
-  public boolean containsPoint(float x, float y, float margin) {
-    if (margin == 0) {
-      return getShape().contains(x, y);
-    } else {
-      return getShape().intersects(x - margin, y - margin, 2 * margin, 2 * margin);
+
+    /**
+     * Returns <code>true</code> if the bottom left point of this piece is
+     * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>,
+     * and if that point is closer to bottom left point than to top left and bottom right points.
+     */
+    public boolean isBottomLeftPointAt ( float x, float y, float margin){
+      float[][] points = getPoints();
+      double distanceSquareToBottomLeftPoint = Point2D.distanceSq(x, y, points[3][0], points[3][1]);
+      return distanceSquareToBottomLeftPoint <= margin * margin
+              && distanceSquareToBottomLeftPoint < Point2D.distanceSq(x, y, points[0][0], points[0][1])
+              && distanceSquareToBottomLeftPoint < Point2D.distanceSq(x, y, points[2][0], points[2][1]);
     }
-  }
-  
-  /**
-   * Returns <code>true</code> if one of the corner of this piece is 
-   * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>.
-   */
-  public boolean isPointAt(float x, float y, float margin) {
-    for (float [] point : getPoints()) {
-      if (Math.abs(x - point[0]) <= margin && Math.abs(y - point[1]) <= margin) {
-        return true;
+
+    /**
+     * Returns <code>true</code> if the bottom right point of this piece is
+     * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>,
+     * and if that point is closer to top left point than to top right and bottom left points.
+     */
+    public boolean isBottomRightPointAt ( float x, float y, float margin){
+      float[][] points = getPoints();
+      double distanceSquareToBottomRightPoint = Point2D.distanceSq(x, y, points[2][0], points[2][1]);
+      return distanceSquareToBottomRightPoint <= margin * margin
+              && distanceSquareToBottomRightPoint < Point2D.distanceSq(x, y, points[1][0], points[1][1])
+              && distanceSquareToBottomRightPoint < Point2D.distanceSq(x, y, points[3][0], points[3][1]);
+    }
+
+    /**
+     * Returns <code>true</code> if the center point at which is displayed the name
+     * of this piece is equal to the point at (<code>x</code>, <code>y</code>)
+     * with a given <code>margin</code>.
+     */
+    public boolean isNameCenterPointAt ( float x, float y, float margin){
+      return Math.abs(x - getX() - getNameXOffset()) <= margin
+              && Math.abs(y - getY() - getNameYOffset()) <= margin;
+    }
+
+    /**
+     * Returns the shape matching this piece.
+     */
+    private Shape getShape () {
+      if (this.shapeCache == null) {
+        // Create the rectangle that matches piece bounds
+        Rectangle2D pieceRectangle = new Rectangle2D.Float(
+                getX() - getWidth() / 2,
+                getY() - getDepth() / 2,
+                getWidth(), getDepth());
+        // Apply rotation to the rectangle
+        AffineTransform rotation = AffineTransform.getRotateInstance(getAngle(), getX(), getY());
+        PathIterator it = pieceRectangle.getPathIterator(rotation);
+        GeneralPath pieceShape = new GeneralPath();
+        pieceShape.append(it, false);
+        // Cache shape
+        this.shapeCache = pieceShape;
       }
-    } 
-    return false;
-  }
-
-  /**
-   * Returns <code>true</code> if the top left point of this piece is 
-   * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>, 
-   * and if that point is closer to top left point than to top right and bottom left points.
-   */
-  public boolean isTopLeftPointAt(float x, float y, float margin) {
-    float [][] points = getPoints();
-    double distanceSquareToTopLeftPoint = Point2D.distanceSq(x, y, points[0][0], points[0][1]);
-    return distanceSquareToTopLeftPoint <= margin * margin
-        && distanceSquareToTopLeftPoint < Point2D.distanceSq(x, y, points[1][0], points[1][1])
-        && distanceSquareToTopLeftPoint < Point2D.distanceSq(x, y, points[3][0], points[3][1]);
-  }
-
-  /**
-   * Returns <code>true</code> if the top right point of this piece is 
-   * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>, 
-   * and if that point is closer to top right point than to top left and bottom right points.
-   */
-  public boolean isTopRightPointAt(float x, float y, float margin) {
-    float [][] points = getPoints();
-    double distanceSquareToTopRightPoint = Point2D.distanceSq(x, y, points[1][0], points[1][1]);
-    return distanceSquareToTopRightPoint <= margin * margin
-        && distanceSquareToTopRightPoint < Point2D.distanceSq(x, y, points[0][0], points[0][1])
-        && distanceSquareToTopRightPoint < Point2D.distanceSq(x, y, points[2][0], points[2][1]);
-  }
-
-  /**
-   * Returns <code>true</code> if the bottom left point of this piece is 
-   * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>,
-   * and if that point is closer to bottom left point than to top left and bottom right points.
-   */
-  public boolean isBottomLeftPointAt(float x, float y, float margin) {
-    float [][] points = getPoints();
-    double distanceSquareToBottomLeftPoint = Point2D.distanceSq(x, y, points[3][0], points[3][1]);
-    return distanceSquareToBottomLeftPoint <= margin * margin
-        && distanceSquareToBottomLeftPoint < Point2D.distanceSq(x, y, points[0][0], points[0][1])
-        && distanceSquareToBottomLeftPoint < Point2D.distanceSq(x, y, points[2][0], points[2][1]);
-  }
-
-  /**
-   * Returns <code>true</code> if the bottom right point of this piece is 
-   * the point at (<code>x</code>, <code>y</code>) with a given <code>margin</code>, 
-   * and if that point is closer to top left point than to top right and bottom left points.
-   */
-  public boolean isBottomRightPointAt(float x, float y, float margin) {
-    float [][] points = getPoints();
-    double distanceSquareToBottomRightPoint = Point2D.distanceSq(x, y, points[2][0], points[2][1]);
-    return distanceSquareToBottomRightPoint <= margin * margin
-        && distanceSquareToBottomRightPoint < Point2D.distanceSq(x, y, points[1][0], points[1][1])
-        && distanceSquareToBottomRightPoint < Point2D.distanceSq(x, y, points[3][0], points[3][1]);
-  }
-
-  /**
-   * Returns <code>true</code> if the center point at which is displayed the name 
-   * of this piece is equal to the point at (<code>x</code>, <code>y</code>) 
-   * with a given <code>margin</code>. 
-   */
-  public boolean isNameCenterPointAt(float x, float y, float margin) {
-    return Math.abs(x - getX() - getNameXOffset()) <= margin 
-        && Math.abs(y - getY() - getNameYOffset()) <= margin;
-  }
-
-  /**
-   * Returns the shape matching this piece.
-   */
-  private Shape getShape() {
-    if (this.shapeCache == null) {
-      // Create the rectangle that matches piece bounds
-      Rectangle2D pieceRectangle = new Rectangle2D.Float(
-          getX() - getWidth() / 2,
-          getY() - getDepth() / 2,
-          getWidth(), getDepth());
-      // Apply rotation to the rectangle
-      AffineTransform rotation = AffineTransform.getRotateInstance(getAngle(), getX(), getY());
-      PathIterator it = pieceRectangle.getPathIterator(rotation);
-      GeneralPath pieceShape = new GeneralPath();
-      pieceShape.append(it, false);
-      // Cache shape
-      this.shapeCache = pieceShape;
+      return this.shapeCache;
     }
-    return this.shapeCache;
-  }
 
-  /**
-   * Moves this piece of (<code>dx</code>, <code>dy</code>) units.
-   */
-  public void move(float dx, float dy) {
-    setX(getX() + dx);
-    setY(getY() + dy);
-  }
-  
-  /**
-   * Returns a clone of this piece.
-   */
-  @Override
-  public HomePieceOfFurniture clone() {
-    HomePieceOfFurniture clone = (HomePieceOfFurniture)super.clone();
-    clone.propertyChangeSupport = new PropertyChangeSupport(clone);
-    clone.level = null;
-    return clone;
-  }
+    /**
+     * Moves this piece of (<code>dx</code>, <code>dy</code>) units.
+     */
+    public void move ( float dx, float dy){
+      setX(getX() + dx);
+      setY(getY() + dy);
+    }
 
-  /**
-   * Returns a comparator that compares furniture on a given <code>property</code> in ascending order.
-   */
-  public static Comparator<HomePieceOfFurniture> getFurnitureComparator(SortableProperty property) {
-    return SORTABLE_PROPERTY_COMPARATORS.get(property);    
+    /**
+     * Returns a clone of this piece.
+     */
+    @Override
+    public HomePieceOfFurniture clone () {
+      HomePieceOfFurniture clone = (HomePieceOfFurniture) super.clone();
+      clone.propertyChangeSupport = new PropertyChangeSupport(clone);
+      clone.level = null;
+      return clone;
+    }
+
+    /**
+     * Returns a comparator that compares furniture on a given <code>property</code> in ascending order.
+     */
+    public static Comparator<HomePieceOfFurniture> getFurnitureComparator (SortableProperty property){
+      return SORTABLE_PROPERTY_COMPARATORS.get(property);
+    }
   }
-}

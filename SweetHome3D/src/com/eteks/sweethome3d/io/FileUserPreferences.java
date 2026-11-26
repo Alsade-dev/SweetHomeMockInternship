@@ -141,7 +141,7 @@ public class FileUserPreferences extends UserPreferences {
   private static final String TEXTURES_LIBRARIES_PLUGIN_SUB_FOLDER      = "textures";
 
   private static final Content DUMMY_CONTENT;
-  
+
   private final Map<String, Boolean> ignoredActionTips = new HashMap<String, Boolean>();
   private List<ClassLoader>          resourceClassLoaders;
   private final File                 preferencesFolder;

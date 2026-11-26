@@ -165,6 +165,10 @@ public class DefaultFurnitureCatalog extends FurnitureCatalog {
      * If the value of this key is <code>true</code>, the piece of furniture
      * will be considered as a movable piece. 
      */
+    VOLUME("volume"),
+    /**
+     * THe key for the volume in centimeters of a piece of furniture (mandatory).
+     */
     MOVABLE("movable"),
     /**
      * The key for the door or window type of a piece of furniture (mandatory).
@@ -657,7 +661,7 @@ public class DefaultFurnitureCatalog extends FurnitureCatalog {
             resizable, deformable, texturable, price, valueAddedTaxPercentage, currency);
       } else {
         return new CatalogPieceOfFurniture(id, name, description, information, tags, creationDate, grade, 
-            icon, planIcon, model, width, depth, height, elevation, dropOnTopElevation, movable, 
+            icon, planIcon, model, width, depth, height, elevation, dropOnTopElevation, movable,
             staircaseCutOutShape, modelRotation, false, creator, 
             resizable, deformable, texturable, price, valueAddedTaxPercentage, currency);
       }
